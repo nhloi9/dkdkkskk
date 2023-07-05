@@ -29,12 +29,12 @@ const Payment = () => {
 	// //stripe
 	// const {user} = useSelector((state) => state.user);
 
-	const order = {
-		cart: orderData?.cart,
+	let orders = orderData?.orders.map((order) => ({
+		cart: order?.cart,
 		shippingAddress: orderData?.shippingAddress,
 		user: user,
-		totalPrice: orderData?.totalPrice,
-	};
+		totalPrice: order?.totalPrice,
+	}));
 	const amount = Math.round(orderData?.totalPrice * 100);
 
 	const paymentHandler = async (e) => {
@@ -51,7 +51,7 @@ const Payment = () => {
 			payment_method: {
 				card: elements.getElement(CardElement),
 				billing_details: {
-					name: 'Jenny Rosen',
+					name: 'abc',
 				},
 			},
 		});
@@ -65,15 +65,22 @@ const Payment = () => {
 			// The payment has been processed!
 			if (result.paymentIntent.status === 'succeeded') {
 				toast.success('payment succeesfully');
-				order.paymentInfo = {
-					id: result.paymentIntent.id,
-					status: result.paymentIntent.status,
-					type: 'debit/credit card',
-				};
-				order.paidAt = result.paymentIntent.created * 1000;
-				await axios.post('/order/create-order', order);
+
+				orders = orders.map((order) => ({
+					...order,
+					paymentInfo: {
+						id: result.paymentIntent.id,
+						status: result.paymentIntent.status,
+						type: 'debit/credit card',
+					},
+					paidAt: result.paymentIntent.created * 1000,
+				}));
+				try {
+					await axios.post('/order/create-order', orders);
+				} catch (error) {
+					return toast.error(error.response.data.message);
+				}
 				localStorage.setItem('cartItems', JSON.stringify([]));
-				localStorage.setItem('latestOrder', JSON.stringify([]));
 				dispatch({
 					type: 'clearCart',
 				});
@@ -87,15 +94,26 @@ const Payment = () => {
 		}
 	};
 	const handleCashOnDelivery = async () => {
-		order.paymentInfo = {
-			type: 'Cash On Delivery',
-		};
-		await axios.post('/order/create-order', order);
-		dispatch({type: 'clearCart'});
-		dispatch({type: 'createOrder'});
-		localStorage.setItem('cartItems', JSON.stringify([]));
-		navigate('/order/success');
+		try {
+			orders = orders.map((order) => ({
+				...order,
+				paymentInfo: {
+					type: 'Cash On Delivery',
+				},
+			}));
+			await axios.post('/order/create-order', orders);
+			dispatch({type: 'clearCart'});
+			dispatch({type: 'createOrder'});
+			localStorage.setItem('cartItems', JSON.stringify([]));
+			navigate('/order/success');
+		} catch (error) {
+			console.log(3);
+			console.log(error.response.data.message);
+		}
 	};
+	useEffect(() => {
+		window.scrollTo(0, 0);
+	}, []);
 
 	return (
 		<div className="w-full flex flex-col items-center py-8">

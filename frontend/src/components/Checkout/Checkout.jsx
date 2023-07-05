@@ -6,6 +6,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {useEffect} from 'react';
 import axios from '../../redux/actions/axiosConfig';
 import {toast} from 'react-toastify';
+import {backend_url} from '../../server';
 
 const Checkout = () => {
 	const {user} = useSelector((state) => state.user);
@@ -16,12 +17,41 @@ const Checkout = () => {
 	const [address1, setAddress1] = useState('');
 	const [address2, setAddress2] = useState('');
 	const [zipCode, setZipCode] = useState(null);
-	const [couponCode, setCouponCode] = useState('');
-	const [discountPrice, setDiscountPrice] = useState(0);
 	const navigate = useNavigate();
 	// console.log(JSON.parse(localStorage.getItem('cartItems')));
 	const dispatch = useDispatch();
+	const [orders, setOrders] = useState([]);
 
+	console.log(cart);
+	useEffect(() => {
+		if (cart) {
+			const map = new Map();
+			for (let item of cart) {
+				if (map.has(item.shopId)) {
+					map.get(item.shopId).push(item);
+				} else {
+					map.set(item.shopId, [item]);
+				}
+			}
+
+			const listOrders = [];
+			map.forEach((value, key) => {
+				// console.log(value);
+				const subTotalPrice = value.reduce(
+					(sum, item) => (sum += item.discountPrice),
+					0
+				);
+				listOrders.push({
+					cart: value,
+					shipping: subTotalPrice * 0.1,
+					subTotalPrice,
+					totalPrice: subTotalPrice * 1.1,
+				});
+			});
+			console.log(listOrders);
+			setOrders(listOrders);
+		}
+	}, [cart]);
 	useEffect(() => {
 		window.scrollTo(0, 0);
 	}, []);
@@ -44,72 +74,50 @@ const Checkout = () => {
 				city,
 			};
 			const orderData = {
-				cart,
+				orders,
 				totalPrice,
 				subTotalPrice,
 				shipping,
-				discountPrice,
+				discountPrice: totalDiscountPrice,
 				shippingAddress,
 				user,
 			};
+			console.log(orderData);
 			dispatch({type: 'createOrder', payload: orderData});
 			navigate('/payment');
 		}
 	};
-	const subTotalPrice = cart?.reduce(
-		(sum, item) => sum + item.discountPrice * item.qty,
+	const subTotalPrice = orders?.reduce(
+		(sum, order) => sum + order.subTotalPrice,
 		0
 	);
-	const shipping = subTotalPrice * 0.1;
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+	const shipping = orders?.reduce((sum, order) => sum + order.shipping, 0);
+	const totalDiscountPrice = orders?.reduce(
+		(sum, order) => sum + order.discountPrice,
+		0
+	);
 
-		const name = couponCode;
-		try {
-			const {data} = await axios.get(`/coupounCode/get-coupoun/${name}`);
-			// console.log(data.coupounCode);
-			if (!data.coupounCode) {
-				toast.error('no coupon code exists');
-				setDiscountPrice(0);
-			} else {
-				const counponData = data.coupounCode;
-				console.log(counponData);
-				const affectedItems =
-					cart &&
-					cart.filter(
-						(item) =>
-							item.shopId == counponData?.shopId &&
-							(counponData.selectedProduct
-								? item._id == counponData.selectedProduct
-								: 1)
-					);
-				if (affectedItems.length === 0) {
-					return toast.error('coupon code is not valid for this products');
-				}
-				setDiscountPrice(
-					affectedItems.reduce(
-						(sum, item) =>
-							sum + (item.discountPrice * item.qty * counponData.value) / 100,
-						0
-					)
-				);
-			}
-		} catch (error) {
-			toast.error(error.res.data.message);
-		}
-	};
-	// const discountPrice = couponCodeData
-	// 	? ((couponCodeData.value * subTotalPrice) / 100).toFixed(2)
-	// 	: 0;
-	const totalPrice = (subTotalPrice + shipping - +discountPrice).toFixed(2);
+	const totalPrice = (subTotalPrice + shipping - +totalDiscountPrice).toFixed(2);
 	console.log(cart);
 	useEffect(() => {
 		if (cart.toString() == [].toString()) {
 			navigate('/');
 		}
 	}, [cart]);
+	console.log(orders);
 	return (
-		<div className="w-full flex flex-col items-center py-8">
+		<div className="w-full flex flex-col items-center py-8 ">
+			<div className="w-[90%] 1000px:w-[70%] block 800px:flex mb-[50px]">
+				{orders &&
+					orders.length > 0 &&
+					orders.map((order) => (
+						<SingleOrder
+							order={order}
+							orders={orders}
+							setOrders={setOrders}
+						/>
+					))}
+			</div>
 			<div className="w-[90%] 1000px:w-[70%] block 800px:flex">
 				<div className="w-full 800px:w-[65%]">
 					<ShippingInfo
@@ -129,15 +137,23 @@ const Checkout = () => {
 					/>
 				</div>
 				<div className="w-full 800px:w-[35%] 800px:mt-0 mt-8">
-					<CartData
-						handleSubmit={handleSubmit}
-						totalPrice={totalPrice}
-						shipping={shipping}
-						subTotalPrice={subTotalPrice}
-						couponCode={couponCode}
-						setCouponCode={setCouponCode}
-						discountPrice={discountPrice}
-					/>
+					<div className="w-full bg-[#fff] rounded-md p-5 pb-8">
+						<div className="flex justify-between">
+							<h3 className="text-[16px] font-[400] text-[#000000a4]">subtotal:</h3>
+							<h5 className="text-[18px] font-[600]">${subTotalPrice}</h5>
+						</div>
+						<br />
+						<div className="flex justify-between">
+							<h3 className="text-[16px] font-[400] text-[#000000a4]">shipping:</h3>
+							<h5 className="text-[18px] font-[600]">${shipping.toFixed(2)}</h5>
+						</div>
+						<br />
+						<div className="flex justify-between border-b pb-3">
+							<h3 className="text-[16px] font-[400] text-[#000000a4]">Discount:</h3>
+							<h5 className="text-[18px] font-[600]">-${totalDiscountPrice} </h5>
+						</div>
+						<h5 className="text-[18px] font-[600] text-end pt-3">${totalPrice}</h5>
+					</div>
 				</div>
 			</div>
 			<div
@@ -354,7 +370,7 @@ const CartData = ({
 			</div>
 			<h5 className="text-[18px] font-[600] text-end pt-3">${totalPrice}</h5>
 			<br />
-			{/* <form onSubmit={handleSubmit}>
+			<form onSubmit={handleSubmit}>
 				<input
 					type="text"
 					className={`${styles.input} h-[40px] pl-2`}
@@ -369,9 +385,128 @@ const CartData = ({
 					value="Apply code"
 					type="submit"
 				/>
-			</form> */}
+			</form>
 		</div>
 	);
 };
 
+const SingleOrder = ({order, orders, setOrders}) => {
+	const [couponCode, setCouponCode] = useState(null);
+	const [discountPrice, setDiscountPrice] = useState(0);
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+
+		const name = couponCode;
+		try {
+			const {data} = await axios.get(`/coupounCode/get-coupoun/${name}`);
+			// console.log(data.coupounCode);
+			if (!data.coupounCode) {
+				toast.error('no coupon code exists');
+				setDiscountPrice(0);
+			} else {
+				const counponData = data.coupounCode;
+				console.log(counponData);
+				const effectedItems =
+					order.cart &&
+					order.cart.filter(
+						(item) =>
+							item.shopId == counponData?.shopId &&
+							(counponData.selectedProduct
+								? item._id == counponData.selectedProduct
+								: 1)
+					);
+				if (effectedItems.length === 0) {
+					return toast.error('coupon code is not valid for this products');
+				}
+				const amount = effectedItems.reduce(
+					(sum, item) => sum + item.discountPrice * item.qty,
+					0
+				);
+				if (counponData.minAmount && amount < counponData.minAmount)
+					return toast.error(
+						'Your order has not reached the minimum amount to apply this discount code'
+					);
+				setDiscountPrice(
+					counponData.maxAmount && amount > counponData.maxAmount
+						? (counponData.maxAmount * counponData.value) / 100
+						: (amount * counponData.value) / 100
+				);
+			}
+		} catch (error) {
+			toast.error(error.res.data.message);
+		}
+	};
+	useEffect(() => {
+		let coppyOrders = [...orders];
+		const selectedOrder = coppyOrders.find(
+			(item) => item?.cart[0]?.shopId == order?.cart[0]?.shopId
+		);
+		selectedOrder.discountPrice = discountPrice;
+		selectedOrder.totalPrice =
+			order.subTotalPrice + order.shipping - discountPrice;
+		setOrders(coppyOrders);
+	}, [discountPrice]);
+	return (
+		<div className=" w-full 800px:flex bg-white p-[20px]">
+			<div className="w-full 800px:w-[60%]">
+				<div className=" ">
+					{order?.cart.map((item) => (
+						<div className="800px:flex 800px:justify-between">
+							<div className=" flex mb-3 800px:max-w-[70%] items-center ">
+								<img
+									className="block h-[60px] w-[60px] object-cover"
+									src={backend_url + item.images[0]}
+									alt=""
+								/>
+								<div className="ml-2 flex flex-col justify-between">
+									<h1 className="text-[16px] font-[500]">{item.name}</h1>
+									<div className="text-gray-500">
+										US${discountPrice} * {item.qty}
+									</div>
+								</div>
+							</div>
+							<div></div>
+						</div>
+					))}
+				</div>
+			</div>
+			<div className="w-full 800px:w-[40%]">
+				<div className="flex justify-between">
+					<h3 className="text-[16px] font-[400] text-[#000000a4]">subtotal:</h3>
+					<h5 className="text-[18px] font-[600]">${order.subTotalPrice}</h5>
+				</div>
+				<br />
+				<div className="flex justify-between">
+					<h3 className="text-[16px] font-[400] text-[#000000a4]">shipping:</h3>
+					<h5 className="text-[18px] font-[600]">${order.shipping.toFixed(2)}</h5>
+				</div>
+				<br />
+				<div className="flex justify-between border-b pb-3">
+					<h3 className="text-[16px] font-[400] text-[#000000a4]">Discount:</h3>
+					<h5 className="text-[18px] font-[600]">-${discountPrice} </h5>
+				</div>
+				<h5 className="text-[18px] font-[600] text-end pt-3">
+					${order.totalPrice}
+				</h5>
+				<br />
+				<form onSubmit={handleSubmit}>
+					<input
+						type="text"
+						className={`${styles.input} h-[40px] pl-2`}
+						placeholder="Coupoun code"
+						value={couponCode}
+						onChange={(e) => setCouponCode(e.target.value)}
+						required
+					/>
+					<input
+						className={`w-full h-[40px] border border-[#f63b60] text-center text-[#f63b60] rounded-[3px] mt-8 cursor-pointer`}
+						required
+						value="Apply code"
+						type="submit"
+					/>
+				</form>
+			</div>
+		</div>
+	);
+};
 export default Checkout;

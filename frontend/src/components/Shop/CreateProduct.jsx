@@ -141,7 +141,19 @@ const CreateProduct = () => {
 						required
 					/>
 				</div>
-				
+				<div className="w-full py-2">
+					<label htmlFor="stock"> Số lượng</label>
+					<input
+						type="number"
+						id="stock"
+						value={stock}
+						className="block border  w-full py-1 px-2 mt-1 rounded-md  focus:ring-blue-500 focus:border-blue-500 "
+						placeholder="Nhập số lượng ..."
+						onChange={(e) => setStock(e.target.value)}
+						required
+					/>
+				</div>
+
 				<div className="w-full py-2">
 					<label htmlFor="upload"> Tải lên hình ảnh sản phẩm</label>
 					<input

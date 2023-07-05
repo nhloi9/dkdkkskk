@@ -10,31 +10,11 @@ router.post(
 	'/create-order',
 	catchAsyncErrors(async (req, res, next) => {
 		try {
-			const {cart, shippingAddress, totalPrice, user, paymentInfo, paidAt} =
-				req.body;
-			// console.log(paidAt);
-			const shopItems = new Map();
-			for (const item of cart) {
-				if (!shopItems.has(item.shopId)) {
-					shopItems.set(item.shopId, []);
-					shopItems.get(item.shopId).push(item);
-				} else {
-					shopItems.get(item.shopId).push(item);
-				}
-			}
-			const orders = [];
-			for (const [shopId, items] of shopItems) {
-				const order = await Order.create({
-					cart: items,
-					shippingAddress: shippingAddress,
-					user,
-					totalPrice,
-					paymentInfo,
-					paidAt,
-				});
-				orders.push(order);
-			}
-			res.status(201).json({success: true, orders});
+			const orders = req.body;
+			console.log(orders);
+
+			await Order.insertMany(orders);
+			res.status(201).json({success: true});
 		} catch (error) {
 			return next(new ErrorHandler(error.message, 500));
 		}
