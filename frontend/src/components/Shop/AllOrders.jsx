@@ -1,5 +1,9 @@
 import {Button} from '@material-ui/core';
-import {DataGrid} from '@material-ui/data-grid';
+import {
+	DataGrid,
+	GridToolbarContainer,
+	GridToolbarExport,
+} from '@material-ui/data-grid';
 import React, {useEffect, useState} from 'react';
 import {
 	AiOutlineArrowRight,
@@ -112,11 +116,22 @@ const AllOrders = () => {
 						pageSize={10}
 						disableSelectionOnClick
 						autoHeight
+						components={{
+							Toolbar: CustomToolbar,
+						}}
 					/>
 				</div>
 			)}
 		</>
 	);
 };
+
+function CustomToolbar() {
+	return (
+		<GridToolbarContainer>
+			<GridToolbarExport />
+		</GridToolbarContainer>
+	);
+}
 
 export default AllOrders;

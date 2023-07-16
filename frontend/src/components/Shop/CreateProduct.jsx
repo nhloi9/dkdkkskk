@@ -5,12 +5,98 @@ import {useSelector, useDispatch} from 'react-redux';
 import {createProduct} from '../../redux/actions/product';
 import {toast} from 'react-toastify';
 import {useNavigate} from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import {Button} from '@material-ui/core';
+import axios from '../../redux/actions/axiosConfig';
 
 const CreateProduct = () => {
+	const [active, setActive] = useState(1);
+	return (
+		<div className="w-full flex justify-center">
+			{active == 1 ? (
+				<CreateSingleProduct setActive={setActive} />
+			) : (
+				<CreateMultipleProducts setActive={setActive}></CreateMultipleProducts>
+			)}
+		</div>
+	);
+};
+const CreateMultipleProducts = ({setActive}) => {
+	const navigate = useNavigate();
+	const [productsList, setProductsList] = useState(null);
+	const readUploadFile = (e) => {
+		var files = e.target.files,
+			f = files[0];
+		var reader = new FileReader();
+		reader.onload = function (e) {
+			var data = e.target.result;
+			let readedData = XLSX.read(data, {type: 'binary'});
+			const wsname = readedData.SheetNames[0];
+			const ws = readedData.Sheets[wsname];
+
+			/* Convert array to json*/
+			const dataParse = XLSX.utils.sheet_to_json(ws, {header: 1});
+			console.log(dataParse);
+			// setFileUploaded(dataParse);
+
+			setProductsList(dataParse);
+		};
+		reader.readAsBinaryString(f);
+	};
+	const handleCreateMultipleProducts = async (e) => {
+		try {
+			await axios.post('product/create-multiple-products', {
+				products: productsList,
+			});
+			toast.success('Products created successfully');
+			navigate('/dashboard-products');
+		} catch (error) {
+			toast.error(error);
+		}
+	};
+	return (
+		<div className="w-[90%] x bg-white shadow h-[80vh] overflow-y-scroll rounded-md p-3">
+			<div className="w-full flex justify-between">
+				<div
+					className="text-center text-[18px] font-[500] w-[50%] text-gray-400 opacity-75
+				"
+				>
+					<span
+						className="cursor-pointer"
+						onClick={() => setActive(1)}
+					>
+						Tạo một sản phẩm
+					</span>
+				</div>
+				<div className="text-center text-[18px] font-[500] w-[50%]   text-red-500   ">
+					<span className="cursor-pointer"> Tạo nhiều sản phẩm</span>
+				</div>
+			</div>
+			<div className="w-full h-full flex items-center justify-center">
+				<input
+					type="file"
+					name="upload"
+					id="upload"
+					onChange={readUploadFile}
+					accept=".xlsx"
+				/>
+				<Button
+					variant="contained"
+					color="primary"
+					onClick={handleCreateMultipleProducts}
+				>
+					Create
+				</Button>
+			</div>
+		</div>
+	);
+};
+
+const CreateSingleProduct = ({setActive}) => {
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
 	const [category, setCategory] = useState('');
-	const [tags, setTags] = useState('');
+	// const [tags, setTags] = useState('');
 	const [originalPrice, setOriginalPrice] = useState();
 	const [discountPrice, setDiscountPrice] = useState();
 	const [stock, setStock] = useState();
@@ -37,7 +123,6 @@ const CreateProduct = () => {
 		formData.append('name', name);
 		formData.append('description', description);
 		formData.append('category', category);
-		formData.append('tags', tags);
 		formData.append('originalPrice', originalPrice);
 		formData.append('discountPrice', discountPrice);
 		formData.append('stock', stock);
@@ -57,13 +142,30 @@ const CreateProduct = () => {
 			}
 			if (success) {
 				toast.success('Created Successfully');
-				navigate('/dashboard');
+				navigate('/dashboard-products');
 			}
 		}
-	}, [dispatch, error, success, product]);
+	}, [dispatch, error, success, product, navigate]);
 	return (
-		<div className="w-[90%] 800px:w-[50%] bg-white shadow h-[80vh] overflow-y-scroll rounded-md p-3">
-			<h4 className="text-center text-[18px] font-[500]">Tạo sản phẩm</h4>
+		<div className="w-[90%]  bg-white shadow h-[80vh] overflow-y-scroll rounded-md p-3">
+			<div className="w-full flex justify-between">
+				<div
+					className="text-center text-[18px] font-[500] w-[50%]  text-red-500
+				"
+				>
+					<span className="cursor-pointer">Tạo một sản phẩm</span>
+				</div>
+				<div className="text-center text-[18px] font-[500] w-[50%] text-gray-400 opacity-75  ">
+					<span
+						className="cursor-pointer"
+						onClick={() => setActive(2)}
+					>
+						{' '}
+						Tạo nhiều sản phẩm
+					</span>
+				</div>
+			</div>
+
 			<form onSubmit={handleSubmit}>
 				<div className="w-full py-2">
 					<label htmlFor="name">Tên *</label>

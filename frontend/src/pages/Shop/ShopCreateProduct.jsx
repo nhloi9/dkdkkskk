@@ -2,7 +2,6 @@ import React from 'react';
 import DashboardSideBar from '../../components/Shop/Layout/DashboardSideBar';
 import DashboardHeader from '../../components/Shop/Layout/DashboardHeader';
 import CreateProduct from '../../components/Shop/CreateProduct.jsx';
-
 const ShopCreateProduct = () => {
 	return (
 		<div>

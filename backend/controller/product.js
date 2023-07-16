@@ -11,13 +11,13 @@ const httpStatus = require('http-status');
 const fs = require('fs');
 const {isSeller, isAuthenticated} = require('../middleware/auth');
 const {response} = require('../app');
+const product = require('../model/product');
 
 router.post(
 	'/create-product',
 	upload.array('images'),
 	catchAsyncErrors(async (req, res, next) => {
 		try {
-			console.log(1);
 			const shopId = req.body.shopId;
 			const shop = await Shop.findById(shopId);
 			if (!shop) return next(new ErrorHandler('shop id is invalid'));
@@ -30,6 +30,39 @@ router.post(
 				});
 				res.status(status.CREATED).json({success: true, product: product});
 			}
+		} catch (error) {
+			return next(new ErrorHandler(error.message, 500));
+		}
+	})
+);
+
+router.post(
+	'/create-multiple-products',
+	isSeller,
+	catchAsyncErrors(async (req, res, next) => {
+		try {
+			const shopId = req.seller._id;
+			const shop = await Shop.findById(shopId);
+			if (!shop) return next(new ErrorHandler('shop id is invalid'));
+
+			const {products} = req.body;
+			console.log(products);
+			products.shift();
+			const productsdata = products.map((product) => ({
+				name: product[0],
+				description: product[1],
+				category: product[2],
+				originalPrice: product[3],
+				discountPrice: product[4],
+				stock: product[5],
+				images: product[6].trim().replace(/\s\s+/g, ' ').split(' '),
+				shop,
+				shopId,
+			}));
+			await Product.insertMany(productsdata);
+			return res.status(201).json({
+				success: true,
+			});
 		} catch (error) {
 			return next(new ErrorHandler(error.message, 500));
 		}
